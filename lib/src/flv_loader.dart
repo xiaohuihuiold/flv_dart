@@ -141,6 +141,136 @@ class FLVLoader {
 
   Future<FLVTagScript> parseScript(
       RandomAccessFile file, FLVTagScript tagScript) async {
+    int startOffset = offset;
+    while (offset - startOffset < tagScript.dataSize) {
+      // 获取type
+      await file.setPosition(offset);
+      int type = (await file.read(1)).buffer.asByteData().getUint8(0);
+      offset += 1;
+      tagScript.add(await FLVTagScriptParser.parseFromType(this, file, type));
+    }
+
     return tagScript;
+  }
+}
+
+class FLVTagScriptParser {
+  static Future<int> getType(FLVLoader loader, RandomAccessFile file) async {
+    await file.setPosition(loader.offset);
+    int type = (await file.read(1)).buffer.asByteData().getUint8(0);
+    loader.offset += 1;
+    return type;
+  }
+
+  static Future<dynamic> parseFromType(
+      FLVLoader loader, RandomAccessFile file, int type) async {
+    switch (type) {
+      case 0:
+        return await parseDouble(loader, file);
+      case 1:
+        return await parseBool(loader, file);
+      case 2:
+        return await parseString(loader, file);
+      case 3:
+        return await parseObject(loader, file);
+      case 4:
+        break;
+      case 5:
+        break;
+      case 6:
+        break;
+      case 7:
+        break;
+      case 8:
+        return await parseEcmaArray(loader, file);
+      case 9:
+        break;
+      case 10:
+        return await parseArray(loader, file);
+        break;
+      case 11:
+        return await parseDate(loader, file);
+        break;
+      case 12:
+        return await parseLongString(loader, file);
+    }
+    return null;
+  }
+
+  static Future<List> parseArray(FLVLoader loader, RandomAccessFile file) async {
+    await file.setPosition(loader.offset);
+    int length = (await file.read(4)).buffer.asByteData().getUint32(0);
+    loader.offset += 4;
+    List list=List();
+    for(int i=0;i<length;i++){
+      list.add(await parseFromType(loader, file, await getType(loader, file)));
+    }
+    return list;
+  }
+
+  static Future<int> parseDate(FLVLoader loader, RandomAccessFile file) async {
+    await file.setPosition(loader.offset);
+    int data = (await file.read(8)).buffer.asByteData().getUint64(0);
+    loader.offset += 8;
+    return data;
+  }
+
+  static Future<List<Map<String, dynamic>>> parseEcmaArray(
+      FLVLoader loader, RandomAccessFile file) async {
+    await file.setPosition(loader.offset);
+    int length = (await file.read(4)).buffer.asByteData().getUint32(0);
+    loader.offset += 4;
+    List<Map<String, dynamic>> list = List();
+    for (int i = 0; i < length; i++) {
+      list.add(await parseObject(loader, file));
+    }
+    return list;
+  }
+
+  static Future<Map<String, dynamic>> parseObject(
+      FLVLoader loader, RandomAccessFile file) async {
+    String key = await parseString(loader, file);
+    dynamic value =
+        await parseFromType(loader, file, await getType(loader, file));
+    return {key: value};
+  }
+
+  static Future<String> parseString(
+      FLVLoader loader, RandomAccessFile file) async {
+    await file.setPosition(loader.offset);
+    int length = (await file.read(2)).buffer.asByteData().getUint16(0);
+    loader.offset += 2;
+
+    await file.setPosition(loader.offset);
+    Uint8List data = await file.read(length);
+    loader.offset += length;
+    return String.fromCharCodes(data);
+  }
+
+  static Future<String> parseLongString(
+      FLVLoader loader, RandomAccessFile file) async {
+    await file.setPosition(loader.offset);
+    int length = (await file.read(4)).buffer.asByteData().getUint32(0);
+    loader.offset += 4;
+
+    await file.setPosition(loader.offset);
+    Uint8List data = await file.read(length);
+    loader.offset += length;
+    return String.fromCharCodes(data);
+  }
+
+  static Future<bool> parseBool(FLVLoader loader, RandomAccessFile file) async {
+    await file.setPosition(loader.offset);
+    int data = (await file.read(1)).buffer.asByteData().getUint8(0);
+    loader.offset += 1;
+    return data == 1;
+  }
+
+  static Future<double> parseDouble(
+      FLVLoader loader, RandomAccessFile file) async {
+    await file.setPosition(loader.offset);
+    double data = (await file.read(8)).buffer.asByteData().getFloat64(0);
+    loader.offset += 8;
+    return data;
   }
 }
