@@ -27,7 +27,7 @@ void main() {
         printScriptTag(tag);
       }
     });
-  });
+  }, timeout: Timeout(Duration(days: 1)));
 }
 
 void printScriptTag(FLVTagScript tagScript) {

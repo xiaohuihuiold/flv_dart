@@ -28,8 +28,9 @@ class FLVLoader {
     }
 
     // 解析标签
-    flvData.addTag(await parseTag(randomAccessFile));
-
+    while (offset <= (await file.length())) {
+      flvData.addTag(await parseTag(randomAccessFile));
+    }
     return flvData;
   }
 
@@ -122,6 +123,16 @@ class FLVLoader {
       case TAGType.audio:
         break;
       case TAGType.video:
+        FLVTagVideo tagVideo = await parseVideo(
+          file,
+          FLVTagVideo()
+            ..previousSize = previousSize
+            ..type = type
+            ..dataSize = dataSize
+            ..timeStamp = timeStamp
+            ..streamsId = streamsId,
+        );
+        return tagVideo;
         break;
       case TAGType.script:
         FLVTagScript tagScript = await parseScript(
@@ -155,6 +166,122 @@ class FLVLoader {
       tagScript.add(await FLVTagScriptParser.parseFromType(this, file, type));
     }
     return tagScript;
+  }
+
+  Future<FLVTagVideo> parseVideo(
+      RandomAccessFile file, FLVTagVideo tagVideo) async {
+    /*int startOffset = offset;
+    while (offset - startOffset < tagVideo.dataSize) {
+      
+    }*/
+    // video header
+    await file.setPosition(offset);
+    int header = (await file.read(1))[0];
+    offset += 1;
+    tagVideo.frameType = (header >> 4) & 0x0f;
+    tagVideo.codecId = header & 0x0f;
+
+    // avc packet type
+    await file.setPosition(offset);
+    int avcPacketType = (await file.read(1)).buffer.asByteData().getUint8(0);
+    offset += 1;
+    tagVideo.avcPacketType = avcPacketType;
+
+    // composition time
+    await file.setPosition(offset);
+    Uint8List sizeBytes = (await file.read(3));
+    offset += 3;
+    Uint8List sizeBytesA = Uint8List(4);
+    sizeBytesA[0] = 0;
+    sizeBytesA[1] = sizeBytes[0];
+    sizeBytesA[2] = sizeBytes[1];
+    sizeBytesA[3] = sizeBytes[2];
+    tagVideo.compositionTime = sizeBytesA.buffer.asByteData().getUint32(0);
+
+    // data
+    switch (tagVideo.avcPacketType) {
+      case 0:
+        tagVideo.data =
+            await FLVTagVideoParser.parseAVCDecoderConfig(this, file);
+        break;
+      case 1:
+        break;
+    }
+
+    return tagVideo;
+  }
+}
+
+/// flv video标签解析
+class FLVTagVideoParser {
+  static Future<AVCDecoderConfigurationRecord> parseAVCDecoderConfig(
+      FLVLoader loader, RandomAccessFile file) async {
+    AVCDecoderConfigurationRecord record = AVCDecoderConfigurationRecord();
+
+    // version
+    await file.setPosition(loader.offset);
+    int version = (await file.read(1)).buffer.asByteData().getUint8(0);
+    loader.offset += 1;
+    record.configurationVersion = version;
+
+    // sps[1-3]
+    await file.setPosition(loader.offset);
+    Uint8List sps = await file.read(3);
+    loader.offset += 3;
+    record.avcProfileIndication = sps[0];
+    record.profileCompatibility = sps[1];
+    record.avcLevelIndication = sps[2];
+
+    // NALUnitLength
+    await file.setPosition(loader.offset);
+    int lengthSizeMinusOne =
+        (await file.read(1)).buffer.asByteData().getUint8(0) & 0x03;
+    loader.offset += 1;
+    record.lengthSizeMinusOne = lengthSizeMinusOne;
+
+    // sps length
+    await file.setPosition(loader.offset);
+    int spsLength = (await file.read(1)).buffer.asByteData().getUint8(0) & 0x1f;
+    loader.offset += 1;
+    record.numOfSequenceParameterSets = spsLength;
+
+    // get sps
+    for (int i = 0; i < spsLength; i++) {
+      await file.setPosition(loader.offset);
+      int length = (await file.read(2)).buffer.asByteData().getUint16(0);
+      loader.offset += 2;
+      for (int k = 0; k < length; k++) {
+        await file.setPosition(loader.offset);
+        int sps = (await file.read(1)).buffer.asByteData().getUint8(0);
+        loader.offset += 1;
+        record.addSPS(sps);
+      }
+    }
+
+    // pps length
+    await file.setPosition(loader.offset);
+    int ppsLength = (await file.read(1)).buffer.asByteData().getUint8(0);
+    loader.offset += 1;
+    record.numOfPictureParameterSets = ppsLength;
+
+    // get pps
+    for (int i = 0; i < ppsLength; i++) {
+      await file.setPosition(loader.offset);
+      int length = (await file.read(2)).buffer.asByteData().getUint16(0);
+      loader.offset += 2;
+      for (int k = 0; k < length; k++) {
+        await file.setPosition(loader.offset);
+        int pps = (await file.read(1)).buffer.asByteData().getUint8(0);
+        loader.offset += 1;
+        record.addPPS(pps);
+      }
+    }
+
+    /// TODO: sps和pps
+    print(record.sequenceParameterSetNALUnits);
+    print(record.pictureParameterSetNALUnits);
+
+    return record;
   }
 }
 
