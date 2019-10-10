@@ -149,7 +149,6 @@ class FLVLoader {
       offset += 1;
       tagScript.add(await FLVTagScriptParser.parseFromType(this, file, type));
     }
-
     return tagScript;
   }
 }
