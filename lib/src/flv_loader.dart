@@ -223,6 +223,7 @@ class FLVTagScriptParser {
     for (int i = 0; i < length; i++) {
       Map<String, dynamic> obj = await parseObject(loader, file);
       map.addAll(obj);
+      i = obj?.length ?? i;
     }
     return map;
   }
@@ -235,7 +236,6 @@ class FLVTagScriptParser {
       String key = await parseString(loader, file);
       dynamic value =
           await parseFromType(loader, file, await getType(loader, file));
-      print('$key:$value');
       if (value == FLVTagScriptType.end) {
         return map;
       }
