@@ -184,13 +184,11 @@ class FLVTagScriptParser {
       case 8:
         return await parseEcmaArray(loader, file);
       case 9:
-        break;
+        return FLVTagScriptType.end;
       case 10:
         return await parseArray(loader, file);
-        break;
       case 11:
         return await parseDate(loader, file);
-        break;
       case 12:
         return await parseLongString(loader, file);
     }
@@ -231,10 +229,19 @@ class FLVTagScriptParser {
 
   static Future<Map<String, dynamic>> parseObject(
       FLVLoader loader, RandomAccessFile file) async {
-    String key = await parseString(loader, file);
-    dynamic value =
-        await parseFromType(loader, file, await getType(loader, file));
-    return {key: value};
+    Map<String, dynamic> map = Map();
+    bool objEnd = false;
+    while (!objEnd) {
+      String key = await parseString(loader, file);
+      dynamic value =
+          await parseFromType(loader, file, await getType(loader, file));
+      print('$key:$value');
+      if (value == FLVTagScriptType.end) {
+        return map;
+      }
+      map[key] = value;
+    }
+    return map;
   }
 
   static Future<String> parseString(

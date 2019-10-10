@@ -10,7 +10,7 @@ enum FLVTagScriptType {
   undefined,
   reference,
   map,
-  objectAndMark,
+  end,
   array,
   date,
   longString,
