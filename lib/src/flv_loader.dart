@@ -124,7 +124,7 @@ class FLVLoader {
       case TAGType.video:
         break;
       case TAGType.script:
-        return await parseScript(
+        FLVTagScript tagScript = await parseScript(
           file,
           FLVTagScript()
             ..previousSize = previousSize
@@ -133,6 +133,11 @@ class FLVLoader {
             ..timeStamp = timeStamp
             ..streamsId = streamsId,
         );
+        // 填充元数据
+        if ((tagScript.scripts?.length ?? 0) > 0) {
+          tagScript.metaData = FLVMetaData.fromMap(tagScript.scripts[0]);
+        }
+        return tagScript;
       case TAGType.unknown:
         return null;
     }
@@ -153,6 +158,7 @@ class FLVLoader {
   }
 }
 
+/// flv script标签解析
 class FLVTagScriptParser {
   static Future<int> getType(FLVLoader loader, RandomAccessFile file) async {
     await file.setPosition(loader.offset);

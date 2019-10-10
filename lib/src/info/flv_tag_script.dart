@@ -18,10 +18,16 @@ enum FLVTagScriptType {
 }
 
 class FLVTagScript extends FLVTag {
+  String name;
+  FLVMetaData metaData;
   List<dynamic> scripts;
 
   void add(dynamic script) {
     if (script == null) {
+      return;
+    }
+    if (name == null) {
+      name = script;
       return;
     }
     if (scripts == null) {
@@ -38,7 +44,7 @@ class FLVTagScript extends FLVTag {
 | dataSize: $dataSize
 | timeStamp: $timeStamp
 | streamsId: $streamsId
-| ------scripts------
+| ------$name------
 | ${() {
       String str = '';
       scripts?.forEach((e) {
