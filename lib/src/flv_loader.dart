@@ -197,12 +197,13 @@ class FLVTagScriptParser {
     return null;
   }
 
-  static Future<List> parseArray(FLVLoader loader, RandomAccessFile file) async {
+  static Future<List> parseArray(
+      FLVLoader loader, RandomAccessFile file) async {
     await file.setPosition(loader.offset);
     int length = (await file.read(4)).buffer.asByteData().getUint32(0);
     loader.offset += 4;
-    List list=List();
-    for(int i=0;i<length;i++){
+    List list = List();
+    for (int i = 0; i < length; i++) {
       list.add(await parseFromType(loader, file, await getType(loader, file)));
     }
     return list;
@@ -215,16 +216,17 @@ class FLVTagScriptParser {
     return data;
   }
 
-  static Future<List<Map<String, dynamic>>> parseEcmaArray(
+  static Future<Map<String, dynamic>> parseEcmaArray(
       FLVLoader loader, RandomAccessFile file) async {
     await file.setPosition(loader.offset);
     int length = (await file.read(4)).buffer.asByteData().getUint32(0);
     loader.offset += 4;
-    List<Map<String, dynamic>> list = List();
+    Map<String, dynamic> map = Map();
     for (int i = 0; i < length; i++) {
-      list.add(await parseObject(loader, file));
+      Map<String, dynamic> obj = await parseObject(loader, file);
+      map.addAll(obj);
     }
-    return list;
+    return map;
   }
 
   static Future<Map<String, dynamic>> parseObject(
