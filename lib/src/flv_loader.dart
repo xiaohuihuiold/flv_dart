@@ -8,6 +8,7 @@ import 'package:flv_dart/flv_dart.dart';
 class FLVLoader {
   int offset = 0;
   AVCDecoderConfigurationRecord avcDecoderConfigurationRecord;
+  RandomAccessFile out;
 
   Future<FLVData> loadFromPath(String path) async {
     File file = File(path);
@@ -18,6 +19,17 @@ class FLVLoader {
     print('文件:$path');
     RandomAccessFile randomAccessFile = await file.open();
     int length = await randomAccessFile.length();
+
+    /// TODO: 测试输出
+    File outFile = File('${File(path).parent.path}/out.h264');
+    if (await outFile.exists()) {
+      await outFile.delete();
+    }
+    await outFile.create();
+    out = await outFile.open(mode: FileMode.write);
+
+    ///
+
     // 创建flv数据类
     FLVData flvData = FLVData();
 
@@ -288,6 +300,8 @@ class FLVTagVideoParser {
     return record;
   }
 
+  static bool first = true;
+
   static Future parseAVCNALU(
       FLVLoader loader, RandomAccessFile file, FLVTagVideo tagVideo) async {
     int startOffset = loader.offset;
@@ -306,12 +320,23 @@ class FLVTagVideoParser {
       await file.setPosition(loader.offset);
       Uint8List bytes = await file.read(length);
       loader.offset += length;
-      String str = '';
+
+      await loader.out.writeFrom([0x00, 0x00, 0x00, 0x01]);
+      await loader.out.writeFrom(
+          loader.avcDecoderConfigurationRecord.sequenceParameterSetNALUnits);
+
+      await loader.out.writeFrom([0x00, 0x00, 0x00, 0x01]);
+      await loader.out.writeFrom(
+          loader.avcDecoderConfigurationRecord.pictureParameterSetNALUnits);
+
+      await loader.out.writeFrom([0x00, 0x00, 0x00, 0x01]);
+      await loader.out.writeFrom(bytes);
+      /*String str = '';
       bytes.forEach((e) {
         str += e.toRadixString(16) + ',';
       });
       print(str);
-      print('');
+      print('');*/
     }
   }
 }
