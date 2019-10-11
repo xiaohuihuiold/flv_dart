@@ -137,7 +137,17 @@ class FLVLoader {
     switch (type) {
       case TAGType.audio:
         // 暂时跳过音频标签
-        offset += dataSize;
+        // offset += dataSize;
+        FLVTagAudio tagAudio = await parseAudio(
+          file,
+          FLVTagAudio()
+            ..previousSize = previousSize
+            ..type = type
+            ..dataSize = dataSize
+            ..timeStamp = timeStamp
+            ..streamsId = streamsId,
+        );
+        return tagAudio;
         break;
       case TAGType.video:
         FLVTagVideo tagVideo = await parseVideo(
@@ -183,6 +193,36 @@ class FLVLoader {
       tagScript.add(await FLVTagScriptParser.parseFromType(this, file, type));
     }
     return tagScript;
+  }
+
+  Future<FLVTagAudio> parseAudio(
+      RandomAccessFile file, FLVTagAudio tagAudio) async {
+    // sound format
+    await file.setPosition(offset);
+    int info = (await file.read(1)).buffer.asByteData().getUint8(0);
+    offset += 1;
+    tagAudio.soundFormat = (info >> 4) & 0x0f;
+    tagAudio.soundRate = (info >> 2) & 0x03;
+    tagAudio.soundSize = (info >> 1) & 0x01;
+    tagAudio.soundType = info & 0x01;
+
+    if (tagAudio.soundFormat == 10) {
+      // aac packet type
+      await file.setPosition(offset);
+      tagAudio.aacPacketType =
+          (await file.read(1)).buffer.asByteData().getUint8(0);
+      offset += 1;
+    }
+
+    switch (tagAudio.aacPacketType) {
+      case 0:
+        /// TODO:
+        break;
+      case 1:
+        break;
+    }
+
+    return tagAudio;
   }
 
   Future<FLVTagVideo> parseVideo(
@@ -313,7 +353,14 @@ class FLVTagVideoParser {
       Uint8List bytes = await file.read(length);
       loader.offset += length;
 
-      // h264
+      // 解析h264
+      await parseH264(
+        loader.avcDecoderConfigurationRecord.sequenceParameterSetNALUnits,
+        loader.avcDecoderConfigurationRecord.pictureParameterSetNALUnits,
+        bytes,
+      );
+
+      /*   // h264
       List<int> h264Bytes = List();
       // 添加sps
       h264Bytes.addAll([0x00, 0x00, 0x00, 0x01]);
@@ -326,6 +373,15 @@ class FLVTagVideoParser {
       // 添加nalu
       h264Bytes.addAll([0x00, 0x00, 0x00, 0x01]);
       h264Bytes.addAll(bytes);
+      print(bytes[0] & 0x1f);*/
+    }
+  }
+
+  static Future parseH264(List<int> sps, List<int> pps, List<int> nalu) async {
+    int headerType = nalu[0] & 0x1f;
+    // I片
+    if (headerType != 1) {
+      return;
     }
   }
 }
