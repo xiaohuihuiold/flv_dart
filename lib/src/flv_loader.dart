@@ -16,6 +16,7 @@ class FLVLoader {
     }
     print('文件:$path');
     RandomAccessFile randomAccessFile = await file.open();
+    int length = await randomAccessFile.length();
     // 创建flv数据类
     FLVData flvData = FLVData();
 
@@ -28,7 +29,8 @@ class FLVLoader {
     }
 
     // 解析标签
-    while (offset <= (await file.length())) {
+    // 因为最后四个字节代表最后一个tag的大小,所以减去4
+    while (offset < length - 4) {
       flvData.addTag(await parseTag(randomAccessFile));
     }
     return flvData;
@@ -83,7 +85,7 @@ class FLVLoader {
     // 获取type
     await file.setPosition(offset);
     type = FLVTag.int2Type(
-        (await file.read(1)).buffer.asByteData().getUint8(0) & 0x1f);
+        (await file.read(1)).buffer.asByteData().getUint8(0) /* & 0x1f*/);
     offset += 1;
 
     // 获取data大小
@@ -121,6 +123,8 @@ class FLVLoader {
 
     switch (type) {
       case TAGType.audio:
+        // 暂时跳过音频标签
+        offset += dataSize;
         break;
       case TAGType.video:
         FLVTagVideo tagVideo = await parseVideo(
@@ -170,8 +174,8 @@ class FLVLoader {
 
   Future<FLVTagVideo> parseVideo(
       RandomAccessFile file, FLVTagVideo tagVideo) async {
-    /*int startOffset = offset;
-    while (offset - startOffset < tagVideo.dataSize) {
+    int startOffset = offset;
+    /*while (offset - startOffset < tagVideo.dataSize) {
       
     }*/
     // video header
@@ -276,10 +280,6 @@ class FLVTagVideoParser {
         record.addPPS(pps);
       }
     }
-
-    /// TODO: sps和pps
-    print(record.sequenceParameterSetNALUnits);
-    print(record.pictureParameterSetNALUnits);
 
     return record;
   }
