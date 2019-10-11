@@ -7,6 +7,7 @@ import 'package:flv_dart/flv_dart.dart';
 
 class FLVLoader {
   int offset = 0;
+  AVCDecoderConfigurationRecord avcDecoderConfigurationRecord;
 
   Future<FLVData> loadFromPath(String path) async {
     File file = File(path);
@@ -207,8 +208,11 @@ class FLVLoader {
       case 0:
         tagVideo.data =
             await FLVTagVideoParser.parseAVCDecoderConfig(this, file);
+        avcDecoderConfigurationRecord =
+            tagVideo.data as AVCDecoderConfigurationRecord;
         break;
       case 1:
+        await FLVTagVideoParser.parseAVCNALU(this, file, tagVideo);
         break;
     }
 
@@ -282,6 +286,31 @@ class FLVTagVideoParser {
     }
 
     return record;
+  }
+
+  static Future parseAVCNALU(
+      FLVLoader loader, RandomAccessFile file, FLVTagVideo tagVideo) async {
+    int startOffset = loader.offset;
+    print(loader.offset);
+    while (loader.offset - startOffset < tagVideo.dataSize - 5) {
+      await file.setPosition(loader.offset);
+      int length = (await file.read(
+              loader.avcDecoderConfigurationRecord.lengthSizeMinusOne + 1))
+          .buffer
+          .asByteData()
+          .getUint32(0);
+      loader.offset += length;
+
+      await file.setPosition(loader.offset);
+      Uint8List bytes = await file.read(length);
+      loader.offset += length;
+      String str = '';
+      bytes.forEach((e) {
+        str += e.toRadixString(16) + ',';
+      });
+      print(str);
+      print('');
+    }
   }
 }
 
