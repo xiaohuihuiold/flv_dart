@@ -25,6 +25,9 @@ void main() {
 | streamsId: ${tag?.streamsId}''');
       if (tag is FLVTagScript) {
         printScriptTag(tag);
+      } else if (tag is FLVTagVideo) {
+        print('''| avcPacketType: ${tag.avcPacketType}
+| codecId: ${tag.codecId}''');
       }
     });
   }, timeout: Timeout(Duration(days: 1)));
