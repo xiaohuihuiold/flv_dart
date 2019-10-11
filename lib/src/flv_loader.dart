@@ -212,6 +212,7 @@ class FLVLoader {
             tagVideo.data as AVCDecoderConfigurationRecord;
         break;
       case 1:
+        print('解析NALU');
         await FLVTagVideoParser.parseAVCNALU(this, file, tagVideo);
         break;
     }
@@ -291,15 +292,18 @@ class FLVTagVideoParser {
   static Future parseAVCNALU(
       FLVLoader loader, RandomAccessFile file, FLVTagVideo tagVideo) async {
     int startOffset = loader.offset;
+    loader.offset += tagVideo.dataSize - 5;
+    return;
     print(loader.offset);
-    while (loader.offset - startOffset < tagVideo.dataSize - 5) {
+    while ((loader.offset - startOffset) < tagVideo.dataSize) {
       await file.setPosition(loader.offset);
       int length = (await file.read(
-              loader.avcDecoderConfigurationRecord.lengthSizeMinusOne + 1))
-          .buffer
-          .asByteData()
-          .getUint32(0);
-      loader.offset += length;
+                  loader.avcDecoderConfigurationRecord.lengthSizeMinusOne + 1))
+              .buffer
+              .asByteData()
+              .getUint32(0) >>
+          8;
+      loader.offset += loader.avcDecoderConfigurationRecord.lengthSizeMinusOne;
 
       await file.setPosition(loader.offset);
       Uint8List bytes = await file.read(length);
