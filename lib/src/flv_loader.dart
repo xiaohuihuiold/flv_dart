@@ -8,7 +8,8 @@ import 'package:flv_dart/flv_dart.dart';
 class FLVLoader {
   int offset = 0;
   AVCDecoderConfigurationRecord avcDecoderConfigurationRecord;
-  RandomAccessFile out;
+
+  // RandomAccessFile out;
 
   Future<FLVData> loadFromPath(String path) async {
     File file = File(path);
@@ -20,15 +21,14 @@ class FLVLoader {
     RandomAccessFile randomAccessFile = await file.open();
     int length = await randomAccessFile.length();
 
-    /// TODO: 测试输出
+    /* 测试输出
     File outFile = File('${File(path).parent.path}/out.h264');
     if (await outFile.exists()) {
       await outFile.delete();
     }
     await outFile.create();
     out = await outFile.open(mode: FileMode.write);
-
-    ///
+    */
 
     // 创建flv数据类
     FLVData flvData = FLVData();
@@ -187,10 +187,6 @@ class FLVLoader {
 
   Future<FLVTagVideo> parseVideo(
       RandomAccessFile file, FLVTagVideo tagVideo) async {
-    int startOffset = offset;
-    /*while (offset - startOffset < tagVideo.dataSize) {
-      
-    }*/
     // video header
     await file.setPosition(offset);
     int header = (await file.read(1))[0];
@@ -300,14 +296,10 @@ class FLVTagVideoParser {
     return record;
   }
 
-  static bool first = true;
-
   static Future parseAVCNALU(
       FLVLoader loader, RandomAccessFile file, FLVTagVideo tagVideo) async {
     int startOffset = loader.offset;
-/*    loader.offset += tagVideo.dataSize - 5;
-    return;*/
-    print('长度: ${tagVideo.dataSize - 5}');
+
     while ((loader.offset - startOffset) < tagVideo.dataSize - 5) {
       await file.setPosition(loader.offset);
       int byteLength =
@@ -321,22 +313,19 @@ class FLVTagVideoParser {
       Uint8List bytes = await file.read(length);
       loader.offset += length;
 
-      await loader.out.writeFrom([0x00, 0x00, 0x00, 0x01]);
-      await loader.out.writeFrom(
+      // h264
+      List<int> h264Bytes = List();
+      // 添加sps
+      h264Bytes.addAll([0x00, 0x00, 0x00, 0x01]);
+      h264Bytes.addAll(
           loader.avcDecoderConfigurationRecord.sequenceParameterSetNALUnits);
-
-      await loader.out.writeFrom([0x00, 0x00, 0x00, 0x01]);
-      await loader.out.writeFrom(
+      // 添加pps
+      h264Bytes.addAll([0x00, 0x00, 0x00, 0x01]);
+      h264Bytes.addAll(
           loader.avcDecoderConfigurationRecord.pictureParameterSetNALUnits);
-
-      await loader.out.writeFrom([0x00, 0x00, 0x00, 0x01]);
-      await loader.out.writeFrom(bytes);
-      /*String str = '';
-      bytes.forEach((e) {
-        str += e.toRadixString(16) + ',';
-      });
-      print(str);
-      print('');*/
+      // 添加nalu
+      h264Bytes.addAll([0x00, 0x00, 0x00, 0x01]);
+      h264Bytes.addAll(bytes);
     }
   }
 }
