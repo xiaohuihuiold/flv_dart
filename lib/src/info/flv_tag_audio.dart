@@ -10,3 +10,7 @@ class FLVTagAudio extends FLVTag {
 
   dynamic data;
 }
+
+class AudioSpecificConfig{
+
+}
