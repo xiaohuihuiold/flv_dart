@@ -23,8 +23,11 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   Future<Null> _onFrame(_) async {
-    FLVData flvData = await FLVLoader().loadFromPath('/storage/emulated/0/0.flv');
-    print(flvData);
+    FLVLoader loader = FLVLoader();
+    loader.onNALUCallbacks.add((nalu) {
+      print(nalu);
+    });
+    loader.loadFromPath('/storage/emulated/0/0.flv');
   }
 
   @override

@@ -4,7 +4,11 @@ import 'package:flv_dart/flv_dart.dart';
 
 void main() {
   test('load flv', () async {
-    FLVData flvData = await FLVLoader().loadFromPath('/home/xhh/视频/test.flv');
+    FLVLoader loader = FLVLoader();
+    loader.onNALUCallbacks.add((nalu){
+      //print(nalu);
+    });
+    FLVData flvData = await loader.loadFromPath('F:/video/0.flv');
     FLVHeader header = flvData.header;
     List<FLVTag> tags = flvData.flvTags;
 

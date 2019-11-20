@@ -1,13 +1,15 @@
-import 'dart:ffi';
 import 'dart:io';
 
 import 'dart:typed_data';
 
 import 'package:flv_dart/flv_dart.dart';
 
+typedef OnNALUCallback = Function(Uint8List nalu);
+
 class FLVLoader {
   int offset = 0;
   AVCDecoderConfigurationRecord avcDecoderConfigurationRecord;
+  List<OnNALUCallback> onNALUCallbacks = List();
 
   // RandomAccessFile out;
 
@@ -137,8 +139,8 @@ class FLVLoader {
     switch (type) {
       case TAGType.audio:
         // 暂时跳过音频标签
-        // offset += dataSize;
-        FLVTagAudio tagAudio = await parseAudio(
+        offset += dataSize;
+        /*FLVTagAudio tagAudio = await parseAudio(
           file,
           FLVTagAudio()
             ..previousSize = previousSize
@@ -146,8 +148,8 @@ class FLVLoader {
             ..dataSize = dataSize
             ..timeStamp = timeStamp
             ..streamsId = streamsId,
-        );
-        return tagAudio;
+        );*/
+        return null;
         break;
       case TAGType.video:
         FLVTagVideo tagVideo = await parseVideo(
@@ -216,6 +218,7 @@ class FLVLoader {
 
     switch (tagAudio.aacPacketType) {
       case 0:
+
         /// TODO:
         break;
       case 1:
@@ -348,7 +351,7 @@ class FLVTagVideoParser {
           (await file.read(byteLength)).buffer.asByteData().getUint32(0);
       loader.offset += byteLength;
 
-      print('NALU长度: $length');
+      // print('NALU长度: $length');
       await file.setPosition(loader.offset);
       Uint8List bytes = await file.read(length);
       loader.offset += length;
@@ -360,7 +363,6 @@ class FLVTagVideoParser {
         bytes,
       );
 
-      /*   // h264
       List<int> h264Bytes = List();
       // 添加sps
       h264Bytes.addAll([0x00, 0x00, 0x00, 0x01]);
@@ -373,15 +375,42 @@ class FLVTagVideoParser {
       // 添加nalu
       h264Bytes.addAll([0x00, 0x00, 0x00, 0x01]);
       h264Bytes.addAll(bytes);
+
+      loader.onNALUCallbacks?.forEach((callback) {
+        callback(bytes);
+      });
+      /*   // h264
       print(bytes[0] & 0x1f);*/
     }
   }
 
   static Future parseH264(List<int> sps, List<int> pps, List<int> nalu) async {
-    int headerType = nalu[0] & 0x1f;
+    int headerType = nalu[0];
     // I片
-    if (headerType != 1) {
-      return;
+    switch (headerType) {
+      case 0x65:
+        // IDR帧
+        print('IDR');
+        break;
+      case 0x61:
+        // I帧
+        print('I');
+        break;
+      case 0x41:
+        // P帧
+        print('P');
+        break;
+      case 0x01:
+        // B帧
+        print('B');
+        break;
+      case 0x06:
+        // SEI信息
+        print('SEI');
+        break;
+      default:
+        print('未知: ${headerType?.toRadixString(16)}');
+        break;
     }
   }
 }
