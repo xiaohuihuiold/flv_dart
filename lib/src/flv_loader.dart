@@ -390,23 +390,27 @@ class FLVTagVideoParser {
     switch (headerType) {
       case 0x65:
         // IDR帧
-        print('IDR');
+        print('IDR帧');
+        int firstMbInSlice=(nalu[1]&0x80)>>7;
+        int sliceType=(nalu[1]&0x7f);
+        print(firstMbInSlice);
+        print(sliceType);
         break;
       case 0x61:
         // I帧
-        print('I');
+        //print('I帧');
         break;
       case 0x41:
         // P帧
-        print('P');
+        //print('P帧');
         break;
       case 0x01:
         // B帧
-        print('B');
+        //print('B帧');
         break;
       case 0x06:
         // SEI信息
-        print('SEI');
+        //print('SEI信息');
         break;
       default:
         print('未知: ${headerType?.toRadixString(16)}');
