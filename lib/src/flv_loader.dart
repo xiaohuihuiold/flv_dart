@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flv_dart/flv_dart.dart';
+import 'package:flv_dart/src/h264_parser.dart';
 
 typedef OnNALUCallback = Function(Uint8List nalu);
 
@@ -10,10 +11,12 @@ class FLVLoader {
   int offset = 0;
   AVCDecoderConfigurationRecord avcDecoderConfigurationRecord;
   List<OnNALUCallback> onNALUCallbacks = List();
+  H264Parser h264parser;
 
   // RandomAccessFile out;
 
   Future<FLVData> loadFromPath(String path) async {
+    h264parser = H264Parser();
     File file = File(path);
     if (!await file.exists()) {
       print('文件"$path"不存在');
@@ -342,7 +345,6 @@ class FLVTagVideoParser {
   static Future parseAVCNALU(
       FLVLoader loader, RandomAccessFile file, FLVTagVideo tagVideo) async {
     int startOffset = loader.offset;
-
     while ((loader.offset - startOffset) < tagVideo.dataSize - 5) {
       await file.setPosition(loader.offset);
       int byteLength =
@@ -357,7 +359,7 @@ class FLVTagVideoParser {
       loader.offset += length;
 
       // 解析h264
-      await parseH264(
+      await loader.h264parser.parseH264(
         loader.avcDecoderConfigurationRecord.sequenceParameterSetNALUnits,
         loader.avcDecoderConfigurationRecord.pictureParameterSetNALUnits,
         bytes,
@@ -384,39 +386,6 @@ class FLVTagVideoParser {
     }
   }
 
-  static Future parseH264(List<int> sps, List<int> pps, List<int> nalu) async {
-    int headerType = nalu[0];
-    // I片
-    switch (headerType) {
-      case 0x65:
-        // IDR帧
-        print('IDR帧');
-        int firstMbInSlice=(nalu[1]&0x80)>>7;
-        int sliceType=(nalu[1]&0x7f);
-        print(firstMbInSlice);
-        print(sliceType);
-        break;
-      case 0x61:
-        // I帧
-        //print('I帧');
-        break;
-      case 0x41:
-        // P帧
-        //print('P帧');
-        break;
-      case 0x01:
-        // B帧
-        //print('B帧');
-        break;
-      case 0x06:
-        // SEI信息
-        //print('SEI信息');
-        break;
-      default:
-        print('未知: ${headerType?.toRadixString(16)}');
-        break;
-    }
-  }
 }
 
 /// flv script标签解析
