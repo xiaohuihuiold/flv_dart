@@ -15,7 +15,7 @@ class H264Parser {
       case 0x65:
         // IDR帧
         print('IDR帧');
-        print(nalu[0].toRadixString(2));
+        print(nalu.map<String>((e)=>e.toRadixString(16).toUpperCase()));
         break;
       case 0x61:
         // I帧
